@@ -72,11 +72,9 @@ def getNoBackupRules(dataSourcePath):
   nobackuprules=list(map(lambda s:os.path.dirname(s),nobackuprules))
   nobackuprules=list(map(lambda s:re.sub(r'^.*%s'%dataSourcePath,r'',s),nobackuprules))
   nobackuprules=list(map(lambda s:re.sub(r'(.*)',r'--exclude=\1/***',s),nobackuprules))
-  print(nobackuprules)
   return nobackuprules
 
 def backup(dataSourcePath,serverURL,sshKeyPath):
-  print(dataSourcePath)
   dataDestinationPath=socket.gethostname()
   excludesFile=os.path.join(sys.path[0],'backup_exclude')
   
@@ -128,7 +126,6 @@ def main(argv):
   except getopt.GetoptError:           
     usage()                          
     sys.exit(2)    
-  print(opts)
   for opt, arg in opts:                
     if opt in ("-h", "--help"):      
       usage()                     
@@ -137,10 +134,13 @@ def main(argv):
       serverURL = arg               
     elif opt in ("-d", "--data_path"): 
       dataSourcePath = arg               
-      print("got opt; datasourcepath = " + dataSourcePath)
     elif opt in ("-k", "--ssh_key_path"): 
       sshKeyPath = arg               
-  print("got opt; datasourcepath = " + dataSourcePath)
+  if not os.path.isfile(sshKeyPath):
+    print('SSH key path ' + sshKeyPath + ' is not a file')
+    sys.exit(2)
+  if not os.path.isdir(dataSourcePath):
+    print('Data source path ' + sshKeyPath + ' is not a proper path')
   backup(dataSourcePath,serverURL,sshKeyPath)
 
 if __name__=="__main__":
