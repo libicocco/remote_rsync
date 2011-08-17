@@ -1,0 +1,15 @@
+# Example backup_exclude
+# based on http://www.hyperorg.com/blogger/2008/05/10/beginner-to-beginner-rsync-exclude-from/
+# let's assume our backup root is the home folder
+# ls /home/user
+#   Videos/ Pictures/ Documents/
+# ls /home/user/Documents
+#    Paper2010 Paper2011/ Groceries/
+# Let's assume you want to save only things in Documents, but not the Groceries folder
+# Then let's exclude the groceries and all its contents first (order is important)
+- Documents/Groceries/***
+# Then let's add the Documents folder and it's contents
++ Documents/
++ Documents/***
+# Finally let's exlude everything else
+- *
