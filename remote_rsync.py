@@ -119,10 +119,11 @@ def usage():
   sys.exit(2)
 
 def main(argv):                         
+  # default values for the options; can be changed if somebody wants to call the script without options
   serverURL = 'user@remote-host'
   dataSourcePath=sys.path[0]
-  sshKeyPath = '/home/user/.ssh/remote_rsync_id_rsa'
-  excludesFile=os.path.join(sys.path[0],'backup_exclude')
+  sshKeyPath = ''
+  excludesFile=''
   try:                                
     opts, args = getopt.getopt(argv, "hs:d:k:e:", ["help", "server_url=","data_path=","ssh_key_path=","exclude_file="]) 
   except getopt.GetoptError:           

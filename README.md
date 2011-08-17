@@ -31,11 +31,13 @@ And copy it to the server:
 
     user@local-host$ ssh-copy-id -i ~/.ssh/remote_rsync_id_rsa.pub user@remote-host
 
-Now you can backup your data by specifying the server, the data to be backed up and the ssh private key:
+Now you can backup your data by specifying the server, the data to be backed up and the ssh private key.
     
     python3 remote_rsync.py  -s user@remote-host -d /home/user/ -k /home/user/.ssh/remote_rsync_id_rsa
 
 You can create excluding rules by using the file backup_exclude (read the provided file for an example on how to use it) or creating a file named .nobackup in the folders not to be backed up
+
+    python3 remote_rsync.py  -s user@remote-host -d /home/user/ -k /home/user/.ssh/remote_rsync_id_rsa -e backup_exclude
 
 Contributors:
 -------------
