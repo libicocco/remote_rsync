@@ -44,9 +44,21 @@ You can create excluding rules by using the file backup_exclude (read the provid
 
     python3 remote_rsync.py  -s user@remote-host -d /home/user/ -k /home/user/.ssh/remote_rsync_id_rsa -e backup_exclude
 
+If you want to automate a regular backup of your data, you can do it with cron [2].
+Execute
+
+    user@local-host$ crontab -e
+
+And add the following line in order to backup your data every day at 18:15
+
+    15 18 * * *  /usr/bin/python3 /PATH-TO-REMOTE_RSYNC/remote_rsync.py -s user@remote-host -d /home/user/ -k /home/user/.ssh/remote_rsync_id_rsa -e /PATH-TO-REMOTE_RSYNC/backup_exclude
+
+You should have setup properly your ssh keys in order to automatize the backup with cron
+
 Contributors:
 -------------
 
 * Javier Romero [1]
 
 [1]: https://github.com/libicocco
+[2]: https://help.ubuntu.com/community/CronHowto
