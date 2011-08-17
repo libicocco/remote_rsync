@@ -12,7 +12,12 @@ Suitable for running regularly with cron.
 Usage:
 ------
 
-You should have ssh access to the server where you want to backup to.
+First download the script:
+    
+    user@local-host$ git clone https://libicocco@github.com/libicocco/remote_rsync.git
+    user@local-host$ cd remote_rsync
+
+Remember that you should have ssh access to the server where you want to backup to.
 If you want to avoid inputting several times your password,
 you should create an ssh key pair:
 
