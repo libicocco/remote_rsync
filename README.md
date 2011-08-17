@@ -2,7 +2,7 @@ Remote Rsync script
 ==========================================
 
 * Author:    Javier Romero (<jrgn@kth.se>)
-* GitHub:    <https://github.com/libicocco/Hand>
+* GitHub:    <https://github.com/libicocco/remote_rsync>
 
 This free software is copyleft licensed under version 3 of the GPL license.
 
