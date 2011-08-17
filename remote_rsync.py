@@ -22,13 +22,13 @@ This file is part of the remote_rsync project (https://github.com/libicocco/remo
 
 import subprocess,os,re,socket,datetime,sys,getopt
 
-def rotate(dataDestinationPath,serverURL,sshKeyPath):
+def rotate(dataDestinationPath,serverURL,sshCommand):
   nDailySnapshots=4
   nWeeklySnapshots=4
   nMonthlySnapshots=4
   # get the list of snapshots
-  snapshots=subprocess.check_output(['/usr/bin/ssh','-i',sshKeyPath,
-      serverURL,'ls '+dataDestinationPath]).decode('utf-8').split('\n')
+  snapshots=subprocess.check_output(sshCommand+
+      [serverURL,'ls '+dataDestinationPath]).decode('utf-8').split('\n')
   
   # get the daily snapshots; if there are more than allowed either remove the oldest or move it to weekly
   dailySnapshots=list(filter(lambda s:s.startswith('daily_'),snapshots))
@@ -36,10 +36,10 @@ def rotate(dataDestinationPath,serverURL,sshKeyPath):
   dailySnapshots=list(map(lambda s:os.path.join(dataDestinationPath,s),dailySnapshots))
   if len(dailySnapshots)>nDailySnapshots:
       if datetime.datetime.now().weekday()==3: # save weekly snapshot on thursdays
-          subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,
+          subprocess.call(sshCommand+[serverURL,
               'mv '+dailySnapshots[0]+' '+os.path.join(dataDestinationPath,'weekly_'+date)])
       else:
-          subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,'rm -rf '+dailySnapshots[0]])
+          subprocess.call(sshCommand+[serverURL,'rm -rf '+dailySnapshots[0]])
   
   # get the weekly snapshots; if there are more than allowed either remove the oldest or move it to monthly
   weeklySnapshots=list(filter(lambda s:s.startswith('weekly_'),snapshots))
@@ -47,17 +47,17 @@ def rotate(dataDestinationPath,serverURL,sshKeyPath):
   weeklySnapshots=list(map(lambda s:os.path.join(dataDestinationPath,s),weeklySnapshots))
   if len(weeklySnapshots)>(nWeeklySnapshots-1): # -1 because the previous have added one after the list creation
       if datetime.datetime.now().day==20: # save monthly snapshot on the 20th
-          subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,
+          subprocess.call(sshCommand+[serverURL,
               'mv '+weeklySnapshots[0]+' '+os.path.join(dataDestinationPath,'monthly_'+date)])
       else:
-          subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,'rm -rf '+weeklySnapshots[0]])
+          subprocess.call(sshCommand+[serverURL,'rm -rf '+weeklySnapshots[0]])
   
   # get the monthly snapshots; if there are more than allowed remove the oldest
   monthlySnapshots=list(filter(lambda s:s.startswith('monthly_'),snapshots))
   monthlySnapshots.sort()
   monthlySnapshots=list(map(lambda s:os.path.join(dataDestinationPath,s),monthlySnapshots))
   if len(monthlySnapshots)>(nMonthlySnapshots-1): # -1 because the previous have added one after the list creation
-          subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,'rm -rf '+monthlySnapshots[0]])
+          subprocess.call(sshCommand+[serverURL,'rm -rf '+monthlySnapshots[0]])
 
 def getNoBackupRules(dataSourcePath):
   if os.getuid() == 0:# if superuser is available, get the nobackup files with locate
@@ -74,10 +74,8 @@ def getNoBackupRules(dataSourcePath):
   nobackuprules=list(map(lambda s:re.sub(r'(.*)',r'--exclude=\1/***',s),nobackuprules))
   return nobackuprules
 
-def backup(dataSourcePath,serverURL,sshKeyPath):
+def backup(dataSourcePath,serverURL,sshCommand,excludesFile):
   dataDestinationPath=socket.gethostname()
-  excludesFile=os.path.join(sys.path[0],'backup_exclude')
-  
   # exclude directories with .nobackup file inside
   nobackuprules = getNoBackupRules(dataSourcePath)
   
@@ -85,8 +83,7 @@ def backup(dataSourcePath,serverURL,sshKeyPath):
   date=datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
   
   # create backup folder if not created yet
-  subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,
-  'mkdir -p '+dataDestinationPath])
+  subprocess.call(sshCommand+[serverURL,'mkdir -p '+dataDestinationPath])
 
   currentLink='current'
   currentLinkPath=os.path.join(dataDestinationPath,currentLink)
@@ -103,12 +100,16 @@ def backup(dataSourcePath,serverURL,sshKeyPath):
                    '--delete-excluded',
                    '--link-dest=../'+currentLink,
                    '-e',
-                   'ssh -i '+sshKeyPath]+nobackuprules+['--exclude-from='+excludesFile,dataSourcePath,serverURL+':'+incompletePath])
+                   ' '.join(sshCommand)]+
+                   nobackuprules+ # looks like nobackuprules should precede the excludesFile 
+                   ['--exclude-from='+excludesFile,
+                     dataSourcePath,
+                     serverURL+':'+incompletePath])
   
   # set the backup as complete and update the current link
-  subprocess.call(['/usr/bin/ssh','-i',sshKeyPath,serverURL,
+  subprocess.call(sshCommand+[serverURL,
   'mv '+incompletePath+' '+completePath+' && rm -f '+currentLinkPath+' && '+ 'ln -s '+completePath+' '+currentLinkPath])
-  rotate(dataDestinationPath,serverURL,sshKeyPath)
+  rotate(dataDestinationPath,serverURL,sshCommand)
 
 def usage():
   print("usage: ",sys.argv[0]," [-s user@server] | [-d data to be backed up] | [-k ssh key path]")
@@ -121,8 +122,9 @@ def main(argv):
   serverURL = 'user@remote-host'
   dataSourcePath=sys.path[0]
   sshKeyPath = '/home/user/.ssh/remote_rsync_id_rsa'
+  excludesFile=os.path.join(sys.path[0],'backup_exclude')
   try:                                
-    opts, args = getopt.getopt(argv, "hs:d:k:", ["help", "server_url=","data_path=","ssh_key_path="]) 
+    opts, args = getopt.getopt(argv, "hs:d:k:e:", ["help", "server_url=","data_path=","ssh_key_path=","exclude_file="]) 
   except getopt.GetoptError:           
     usage()                          
     sys.exit(2)    
@@ -136,12 +138,22 @@ def main(argv):
       dataSourcePath = arg               
     elif opt in ("-k", "--ssh_key_path"): 
       sshKeyPath = arg               
+    elif opt in ("-e", "--exclude_file"): 
+      excludesFile = arg               
+
   if not os.path.isfile(sshKeyPath):
-    print('SSH key path ' + sshKeyPath + ' is not a file')
-    sys.exit(2)
+    print('SSH key path ' + sshKeyPath + ' is not a file; you will be requested a password (several times)')
+    sshCommand = ['/usr/bin/ssh']
+  else:
+    sshCommand = ['/usr/bin/ssh','-i',sshKeyPath]
+
   if not os.path.isdir(dataSourcePath):
     print('Data source path ' + sshKeyPath + ' is not a proper path')
-  backup(dataSourcePath,serverURL,sshKeyPath)
+
+  if not os.path.isfile(excludesFile):
+    excludesFile=''
+
+  backup(dataSourcePath,serverURL,sshCommand,excludesFile)
 
 if __name__=="__main__":
   main(sys.argv[1:])

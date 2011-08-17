@@ -13,7 +13,8 @@ Usage:
 ------
 
 You should have ssh access to the server where you want to backup to.
-Create an ssh key pair:
+If you want to avoid inputting several times your password,
+you should create an ssh key pair:
 
     user@local-host$ [Note: You are on local-host here]
     user@local-host$ ssh-keygen
